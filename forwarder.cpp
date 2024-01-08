@@ -340,29 +340,29 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   //キャッシュヒット率を取るならIWPそれぞれにInterestが来た数とかhitしたmisshitした数を上の関数内でカウントアップして定期時間ごとにそれぞれのhit率を計算してこっちに持ってくる(グローバル変数)
   
   // CS insert Prob(p)のためにここを主に書き換える
-  m_cs.insert(data);
-  // switch (node) {
-  //   case 1:
-  //     if (p1 > num){
-  //       m_cs.insert(data);
-  //     }
-  //     break;
-  //   case 2:
-  //     if (p2 > num){
-  //       m_cs.insert(data);
-  //     }
-  //     break;
-  //   case 3:
-  //     if (p3 > num){
-  //       m_cs.insert(data);
-  //     }
-  //   case 4:
-  //     if (p4 > num){
-  //       m_cs.insert(data);
-  //     }
-  //   default:
-  //     break;
-  // }
+  //m_cs.insert(data);
+  switch (node) {
+    case 1:
+      if (p1 > num){
+        m_cs.insert(data);
+      }
+      break;
+    case 2:
+      if (p2 > num){
+        m_cs.insert(data);
+      }
+      break;
+    case 3:
+      if (p3 > num){
+        m_cs.insert(data);
+      }
+    case 4:
+      if (p4 > num){
+        m_cs.insert(data);
+      }
+    default:
+      break;
+  }
   
 
   std::set<std::pair<Face*, EndpointId>> satisfiedDownstreams;
