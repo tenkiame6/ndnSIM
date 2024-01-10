@@ -351,11 +351,7 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
 
 
   int node = ns3::Simulator::GetContext();
-<<<<<<< HEAD
   float p1 = 0.1, p2 = 0.1, p3 = 0.1, p4 = 0.1;//各ノードのキャッシュ確率→あとでグローバルに
-=======
-  float p1 = 0.1, p2 = 0.1, p3 = 0.1, p4 = 0.1;//各ノードのキャッシュ確率→グローバルに
->>>>>>> 9352098acab9ff02bf900953d9449475745d0c06
   //ここでhit率に基づいてpの更新 hit率をどうとるか？
   
   //ここで一定時間を作る
