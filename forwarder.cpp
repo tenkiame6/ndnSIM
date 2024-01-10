@@ -38,11 +38,15 @@
 
 #include "face/null-face.hpp"
 
+int Count_InInterests[5] = {0};
+int Count_Hits[5] = {0};
+
 namespace nfd {
 
 NFD_LOG_INIT(Forwarder);
 
 const std::string CFG_FORWARDER = "forwarder";
+
 
 static Name
 getDefaultStrategyName()
@@ -100,6 +104,11 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   NFD_LOG_DEBUG("onIncomingInterest in=" << ingress << " interest=" << interest.getName());
   interest.setTag(make_shared<lp::IncomingFaceIdTag>(ingress.face.getId()));
   ++m_counters.nInInterests;
+  
+  //各ノードにintrestが来た数を保存
+  int node = ns3::Simulator::GetContext();
+  Count_InInterests [node] = m_counters.nInInterests;
+  //std::cout<< node <<" "<< Count_InInterests[node]<<std::endl;
 
   // drop if HopLimit zero, decrement otherwise (if present)
   if (interest.getHopLimit()) {
@@ -165,6 +174,7 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   else {
     this->onContentStoreMiss(interest, ingress, pitEntry);
   }
+
 }
 
 void
@@ -254,6 +264,12 @@ Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingre
 
   // dispatch to strategy: after Content Store hit
   m_strategyChoice.findEffectiveStrategy(*pitEntry).afterContentStoreHit(data, ingress, pitEntry);
+
+  //各IWPのキャッシュヒット数を保存
+  int node = ns3::Simulator::GetContext();
+  Count_Hits[node] = m_counters.nCsHits;
+  std::cout<< node <<" "<< Count_Hits[node]<<std::endl;
+
 }
 
 pit::OutRecord*
@@ -278,6 +294,8 @@ Forwarder::onOutgoingInterest(const Interest& interest, Face& egress,
   egress.sendInterest(interest);
   ++m_counters.nOutInterests;
   return &*it;
+
+
 }
 
 void
@@ -333,14 +351,21 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
 
 
   int node = ns3::Simulator::GetContext();
-  float p1 = 0.1, p2 = 0.1, p3 = 0.1, p4 = 0.1;
+  float p1 = 0.1, p2 = 0.1, p3 = 0.1, p4 = 0.1;//各ノードのキャッシュ確率→グローバルに
+  //ここでhit率に基づいてpの更新 hit率をどうとるか？
+  
+  //ここで一定時間を作る
+  // if (Count_InInterests[0] % 100 == 0){
+    
+  // }
+  
   double num = (double)rand()/RAND_MAX;
 
   //定期時間の図り方(=タイマーの作り方): IWP1に来るinterestの数をカウントすればいい＝1000個来るごとに1秒
   //キャッシュヒット率を取るならIWPそれぞれにInterestが来た数とかhitしたmisshitした数を上の関数内でカウントアップして定期時間ごとにそれぞれのhit率を計算してこっちに持ってくる(グローバル変数)
   
   // CS insert Prob(p)のためにここを主に書き換える
-  //m_cs.insert(data);
+  //変更前: m_cs.insert(data);
   switch (node) {
     case 1:
       if (p1 > num){
