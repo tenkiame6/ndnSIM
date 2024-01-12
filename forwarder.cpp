@@ -40,6 +40,10 @@
 
 int Count_InInterests[5] = {0};
 int Count_Hits[5] = {0};
+double node_Hitrate[5] = {0};
+
+float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
+
 
 namespace nfd {
 
@@ -268,7 +272,7 @@ Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingre
   //各IWPのキャッシュヒット数を保存
   int node = ns3::Simulator::GetContext();
   Count_Hits[node] = m_counters.nCsHits;
-  std::cout<< node <<" "<< Count_Hits[node]<<std::endl;
+  //std::cout<< node <<" "<< Count_Hits[node]<<std::endl;
 
 }
 
@@ -351,44 +355,38 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
 
 
   int node = ns3::Simulator::GetContext();
-  float p1 = 0.1, p2 = 0.1, p3 = 0.1, p4 = 0.1;//各ノードのキャッシュ確率→あとでグローバルに
-  //ここでhit率に基づいてpの更新 hit率をどうとるか？
-  
-  //ここで一定時間を作る
-  // if (Count_InInterests[0] % 100 == 0){
-    
-  // }
-  
   double num = (double)rand()/RAND_MAX;
+  //キャッシュヒット率を取るならIWPそれぞれにInterestが来た数とかhitしたmisshitした数を上の関数内でカウントアップ
+  //定期時間ごとにそれぞれのhit率を計算
+  // 定期時間の図り方(=タイマーの作り方): IWP1に来るinterestの数をカウントすればいい＝any個来るごとに1秒
 
-  //定期時間の図り方(=タイマーの作り方): IWP1に来るinterestの数をカウントすればいい＝1000個来るごとに1秒
-  //キャッシュヒット率を取るならIWPそれぞれにInterestが来た数とかhitしたmisshitした数を上の関数内でカウントアップして定期時間ごとにそれぞれのhit率を計算してこっちに持ってくる(グローバル変数)
-  
-  // CS insert Prob(p)のためにここを主に書き換える
-  //変更前: m_cs.insert(data);
-  switch (node) {
-    case 1:
-      if (p1 > num){
-        m_cs.insert(data);
+  if (Count_InInterests[1] % 1000 == 0 && node == 0){//100パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
+      std::cout<< ">>time" << Count_InInterests[1] / 100 <<"s"<<std::endl;
+      for (int i = 1; i < 5; i++){
+        node_Hitrate[i] = (double)Count_Hits[i] / (double)Count_InInterests[i];
+        std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
+
+        if (node_Hitrate[i] < 0.18){
+          p[i-1] = p[i-1] * 1.5;
+
+          if (p[i-1] > 0.5){
+            p[i-1] = 0.5;
+          }
+        }else{
+          p[i-1] = p[i-1] * 0.75;
+
+          if (p[i-1] < 0.0625){
+            p[i-1] = 0.0625;
+          }
+        }
+        std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
       }
-      break;
-    case 2:
-      if (p2 > num){
-        m_cs.insert(data);
-      }
-      break;
-    case 3:
-      if (p3 > num){
-        m_cs.insert(data);
-      }
-    case 4:
-      if (p4 > num){
-        m_cs.insert(data);
-      }
-    default:
-      break;
   }
-  
+
+  if (p[node-1] > num){
+    m_cs.insert(data);
+  }
+   
 
   std::set<std::pair<Face*, EndpointId>> satisfiedDownstreams;
   std::multimap<std::pair<Face*, EndpointId>, std::shared_ptr<pit::Entry>> unsatisfiedPitEntries;
