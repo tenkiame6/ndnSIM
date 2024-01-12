@@ -41,8 +41,8 @@
 int Count_InInterests[5] = {0};
 int Count_Hits[5] = {0};
 double node_Hitrate[5] = {0};
-
-float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
+bool CacheHit[5] = {false};
+float p[4] = {0.125, 0.25, 0.50, 1.0};//各ノードのキャッシュ確率の初期化
 
 
 namespace nfd {
@@ -273,7 +273,7 @@ Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingre
   int node = ns3::Simulator::GetContext();
   Count_Hits[node] = m_counters.nCsHits;
   //std::cout<< node <<" "<< Count_Hits[node]<<std::endl;
-
+  CacheHit[node] = true;
 }
 
 pit::OutRecord*
@@ -355,7 +355,7 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
 
 
   int node = ns3::Simulator::GetContext();
-  double num = (double)rand()/RAND_MAX;
+  double randnum = (double)rand()/RAND_MAX;
   //キャッシュヒット率を取るならIWPそれぞれにInterestが来た数とかhitしたmisshitした数を上の関数内でカウントアップ
   //定期時間ごとにそれぞれのhit率を計算
   // 定期時間の図り方(=タイマーの作り方): IWP1に来るinterestの数をカウントすればいい＝any個来るごとに1秒
@@ -366,7 +366,7 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
         node_Hitrate[i] = (double)Count_Hits[i] / (double)Count_InInterests[i];
         std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
 
-        if (node_Hitrate[i] < 0.18){
+        if (CacheHit[i] == false){
           p[i-1] = p[i-1] * 1.5;
 
           if (p[i-1] > 0.5){
@@ -380,10 +380,12 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
           }
         }
         std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
+        CacheHit[i] = false;
       }
+    
   }
 
-  if (p[node-1] > num){
+  if (p[node-1] > randnum){
     m_cs.insert(data);
   }
    
