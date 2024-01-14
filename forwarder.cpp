@@ -42,7 +42,7 @@ int Count_InInterests[5] = {0};
 int Count_Hits[5] = {0};
 double node_Hitrate[5] = {0};
 bool CacheHit[5] = {false};
-float p[4] = {0.125, 0.25, 0.50, 1.0};//各ノードのキャッシュ確率の初期化
+float p[4] = {0.015, 0.0625, 0.125, 0.5};//各ノードのキャッシュ確率の初期化
 
 
 namespace nfd {
@@ -366,23 +366,23 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
         node_Hitrate[i] = (double)Count_Hits[i] / (double)Count_InInterests[i];
         std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
 
-        if (CacheHit[i] == false){
-          p[i-1] = p[i-1] * 1.5;
+        // if (CacheHit[i] == false){
+        //   p[i-1] = p[i-1] * 1.5;
 
-          if (p[i-1] > 0.5){
-            p[i-1] = 0.5;
-          }
-        }else{
-          p[i-1] = p[i-1] * 0.75;
+        //   if (p[i-1] > 0.5){
+        //     p[i-1] = 0.5;
+        //   }
+        // }else{
+        //   p[i-1] = p[i-1] * 0.75;
 
-          if (p[i-1] < 0.0625){
-            p[i-1] = 0.0625;
-          }
-        }
+        //   if (p[i-1] < 0.0625){
+        //     p[i-1] = 0.0625;
+        //   }
+        // }
         std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
-        CacheHit[i] = false;
+        // CacheHit[i] = false;
       }
-    
+      std::cout<< "wholehitrate" << ((double)(Count_Hits[1] + Count_Hits[2] + Count_Hits[3] + Count_Hits[4])/(double)Count_InInterests[1]) *100 << "%" <<std::endl;
   }
 
   if (p[node-1] > randnum){
