@@ -42,8 +42,8 @@ int Count_InInterests[5] = {0};
 int Count_Hits[5] = {0};
 int preCount_hits[5] = {0};
 double node_Hitrate[5] = {0};
-bool CacheHit[5] = {false};
-bool IncomingInterst[5] = {false};
+bool boolCachehit[5] = {false};
+bool boolIncomingInterst[5] = {false};
 float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
 // float p[4] = {0.5, 0.5, 0.5, 0.5};
 // float p[4] = {0.0625, 0.125, 0.25, 0.5};
@@ -182,7 +182,7 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   else {
     this->onContentStoreMiss(interest, ingress, pitEntry);
   }
-  IncomingInterst[node] = true;
+  boolIncomingInterst[node] = true;
 }
 
 void
@@ -277,7 +277,7 @@ Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingre
   int node = ns3::Simulator::GetContext();
   Count_Hits[node] = m_counters.nCsHits;
   // std::cout<< node <<" "<< Count_Hits[node]<<std::endl;
-  CacheHit[node] = true;
+  boolCachehit[node] = true;
 }
 
 pit::OutRecord*
@@ -357,36 +357,18 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
     return;
   }
 
-
   int node = ns3::Simulator::GetContext();
   double randnum = (double)rand()/RAND_MAX;
-  //キャッシュヒット率を取るならIWPそれぞれにInterestが来た数とかhitしたmisshitした数を上の関数内でカウントアップ
-  //定期時間ごとにそれぞれのhit率を計算
-  // 定期時間の図り方(=タイマーの作り方): IWP1に来るinterestの数をカウントすればいい＝any個来るごとに1秒
 
-  if (Count_InInterests[1] % 25 == 0 && node == 0){//100パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
+  if (Count_InInterests[1] % 25 == 0 && node == 0){//**パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
       std::cout<< ">>time" << Count_InInterests[1] / 100 <<"s"<<std::endl;
       for (int i = 1; i < 5; i++){
         node_Hitrate[i] = (double)Count_Hits[i] / (double)Count_InInterests[i];
         std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
-
-        // if (node_Hitrate[i] < 0.4){//キャッシュヒット率が0.4未満のとき
-        //   p[i-1] = p[i-1] * 1.25;//キャッシュ確率を1.25倍に
-
-        //   if (p[i-1] > 0.5){//上限値は0.5
-        //     p[i-1] = 0.5;
-        //   }
-        // }else{
-        //   p[i-1] = p[i-1] * 0.75;//キャッシュ確率を0.75倍に
-
-        //   if (p[i-1] < 0.0625){//下限値は0.0625
-        //     p[i-1] = 0.0625;
-        //   }
-        // }
-        std::cout << IncomingInterst[i] << std::endl;
-        std::cout << CacheHit[i] << std::endl;
-        if (IncomingInterst[i] == true){
-          if (CacheHit[i] == false){//10秒間でキャッシュヒットしなかったとき
+        // std::cout << IncomingInterst[i] << std::endl;
+        // std::cout << boolCachehit[i] << std::endl;
+        if (boolIncomingInterst[i] == true){
+          if (boolCachehit[i] == false){//10秒間でキャッシュヒットしなかったとき
             p[i-1] = p[i-1] * 1.25;//キャッシュ確率を1.25倍に
               if (p[i-1] > 0.5){//上限値は0.5
                 p[i-1] = 0.5;
@@ -400,10 +382,11 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
           }
         }
         
-        std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
-        CacheHit[i] = false;
-        IncomingInterst[i] = false;
+        boolCachehit[i] = false;
+        boolIncomingInterst[i] = false;
         preCount_hits[i] = Count_Hits[i];
+
+        std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
       }
       std::cout<< "wholehitrate" << ((double)(Count_Hits[1] + Count_Hits[2] + Count_Hits[3] + Count_Hits[4])/(double)Count_InInterests[1]) *100 << "%" <<std::endl;
   }
