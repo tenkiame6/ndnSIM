@@ -42,6 +42,7 @@ int Count_InInterests[5] = {0};
 int Count_Hits[5] = {0};
 int preCount_hits[5] = {0};
 double node_Hitrate[5] = {0};
+double prenode_Hitrate[5] = {0};
 bool boolCachehit[5] = {false};
 bool boolIncomingInterst[5] = {false};
 float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
@@ -361,30 +362,35 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   double randnum = (double)rand()/RAND_MAX;
 
   if (Count_InInterests[1] % 25 == 0 && node == 0){//**パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
-      std::cout<< ">>time" << Count_InInterests[1] / 100 <<"s"<<std::endl;
+      std::cout<< ">>time" << Count_InInterests[1] / 100 <<"s"<<std::endl;//if(countinterst[i] == ****)のとき出力で減らす
       for (int i = 1; i < 5; i++){
         node_Hitrate[i] = (double)Count_Hits[i] / (double)Count_InInterests[i];
         std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
         // std::cout << IncomingInterst[i] << std::endl;
         // std::cout << boolCachehit[i] << std::endl;
-        if (boolIncomingInterst[i] == true){
-          if (boolCachehit[i] == false){//10秒間でキャッシュヒットしなかったとき
-            p[i-1] = p[i-1] * 1.25;//キャッシュ確率を1.25倍に
+        // std::cout << "prehits: " << preCount_hits[i] << " hits: " << Count_Hits[i] << std::endl;
+
+        std::cout << "prehitrate: " << prenode_Hitrate[i] * 100 << " hitrate: " << node_Hitrate[i] * 100 << std::endl;
+        if (boolIncomingInterst[i] == true){//intrestが来てないノードはキャッシュ確率の変動をしない
+          if ((prenode_Hitrate[i] - node_Hitrate[i]) > 0.01){//前-今の差が1%のときこっち
+            p[i-1] = p[i-1] * 1.5;//キャッシュ確率を1.25倍に ヒット率が大きく下がれば大きく倍率を上げるとか
               if (p[i-1] > 0.5){//上限値は0.5
                 p[i-1] = 0.5;
               }
           }else{
-            p[i-1] = p[i-1] * 0.25;//キャッシュ確率を0.75倍に
+            p[i-1] = p[i-1] * 0.5;//キャッシュ確率を0.75倍に
 
             if (p[i-1] < 0.0625){//下限値は0.0625
-              p[i-1] = 0.0625;
+              p[i-1] = 0.0625;//あとで: 定常状態になればここを更に下げる 傾向の変化との折り合い
             }
+
           }
         }
-        
+
         boolCachehit[i] = false;
         boolIncomingInterst[i] = false;
         preCount_hits[i] = Count_Hits[i];
+        prenode_Hitrate[i] = node_Hitrate[i];
 
         std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
       }
