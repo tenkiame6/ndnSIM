@@ -38,16 +38,17 @@
 
 #include "face/null-face.hpp"
 
-int Count_InInterests[5] = {0};
-int Count_Hits[5] = {0};
-int preCount_hits[5] = {0};
+int node_Count_inInterests[5] = {0};
+int node_Count_Hits[5] = {0};
 double node_Hitrate[5] = {0};
-double prenode_Hitrate[5] = {0};
+// int prenode_Count_Hits[5] = {0}; //ヒット率比較方式で使用
+// double prenode_Hitrate[5] = {0};//ヒット率比較方式で使用
 bool boolCachehit[5] = {false};
-bool boolIncomingInterst[5] = {false};
-float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
+bool boolinInterest[5] = {false};
+
+// float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
 // float p[4] = {0.5, 0.5, 0.5, 0.5};
-// float p[4] = {0.0625, 0.125, 0.25, 0.5};
+float p[4] = {0.0625, 0.125, 0.25, 0.5};
 // float p[4] = {0.015625, 0.03125, 0.125, 0.5};
 
 namespace nfd {
@@ -116,8 +117,8 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   
   //各ノードにintrestが来た数を保存
   int node = ns3::Simulator::GetContext();
-  Count_InInterests [node] = m_counters.nInInterests;
-  //std::cout<< node <<" "<< Count_InInterests[node]<<std::endl;
+  node_Count_inInterests [node] = m_counters.nInInterests;
+  //std::cout<< node <<" "<< node_Count_inInterests[node]<<std::endl;
 
   // drop if HopLimit zero, decrement otherwise (if present)
   if (interest.getHopLimit()) {
@@ -183,7 +184,7 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   else {
     this->onContentStoreMiss(interest, ingress, pitEntry);
   }
-  boolIncomingInterst[node] = true;
+  boolinInterest[node] = true;
 }
 
 void
@@ -276,8 +277,8 @@ Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingre
 
   //各IWPのキャッシュヒット数を保存
   int node = ns3::Simulator::GetContext();
-  Count_Hits[node] = m_counters.nCsHits;
-  // std::cout<< node <<" "<< Count_Hits[node]<<std::endl;
+  node_Count_Hits[node] = m_counters.nCsHits;
+  // std::cout<< node <<" "<< node_Count_Hits[node]<<std::endl;
   boolCachehit[node] = true;
 }
 
@@ -359,21 +360,20 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   }
 
   int node = ns3::Simulator::GetContext();
-  double randnum = (double)rand()/RAND_MAX;
-
-  if (Count_InInterests[1] % 25 == 0 && node == 0){//**パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
-      std::cout<< ">>time" << Count_InInterests[1] / 100 <<"s"<<std::endl;//if(countinterst[i] == ****)のとき出力で減らす
+  
+  if (node_Count_inInterests[1] % 25 == 0 && node == 0){//**パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
+      std::cout<< ">>time" << node_Count_inInterests[1] / 100 <<"s"<<std::endl;//if(countinterst[i] == ****)のとき出力で減らす
       for (int i = 1; i < 5; i++){
-        node_Hitrate[i] = (double)Count_Hits[i] / (double)Count_InInterests[i];
+        node_Hitrate[i] = (double)node_Count_Hits[i] / (double)node_Count_inInterests[i];
         std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
-        // std::cout << IncomingInterst[i] << std::endl;
-        // std::cout << boolCachehit[i] << std::endl;
-        // std::cout << "prehits: " << preCount_hits[i] << " hits: " << Count_Hits[i] << std::endl;
 
-        std::cout << "prehitrate: " << prenode_Hitrate[i] * 100 << " hitrate: " << node_Hitrate[i] * 100 << std::endl;
-        if (boolIncomingInterst[i] == true){//intrestが来てないノードはキャッシュ確率の変動をしない
-          if ((prenode_Hitrate[i] - node_Hitrate[i]) > 0.01){//前-今の差が1%のときこっち
-            p[i-1] = p[i-1] * 1.5;//キャッシュ確率を1.25倍に ヒット率が大きく下がれば大きく倍率を上げるとか
+        // std::cout << boolinInterest[i] << std::endl;
+        // std::cout << boolCachehit[i] << std::endl;
+        // std::cout << "prehitrate: " << prenode_Hitrate[i] * 100 << " hitrate: " << node_Hitrate[i] * 100 << std::endl;
+
+        if (boolinInterest[i] == true){//intrestが来てないノードはキャッシュ確率の変動をしない
+          if (boolCachehit[i] == false){//キャッシュヒットしなかった場合
+            p[i-1] = p[i-1] * 1.5;//キャッシュ確率を1.25倍に
               if (p[i-1] > 0.5){//上限値は0.5
                 p[i-1] = 0.5;
               }
@@ -381,22 +381,22 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
             p[i-1] = p[i-1] * 0.5;//キャッシュ確率を0.75倍に
 
             if (p[i-1] < 0.0625){//下限値は0.0625
-              p[i-1] = 0.0625;//あとで: 定常状態になればここを更に下げる 傾向の変化との折り合い
+              p[i-1] = 0.0625;//あとで: 定常状態になればここを更に下げる考え方もある(傾向の変化との折り合い)
             }
-
           }
         }
 
         boolCachehit[i] = false;
-        boolIncomingInterst[i] = false;
-        preCount_hits[i] = Count_Hits[i];
-        prenode_Hitrate[i] = node_Hitrate[i];
+        boolinInterest[i] = false;
+        // prenode_Count_Hits[i] = node_Count_Hits[i];//ヒット率比較方式で使用
+        // prenode_Hitrate[i] = node_Hitrate[i];//ヒット率比較方式で使用
 
         std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
       }
-      std::cout<< "wholehitrate" << ((double)(Count_Hits[1] + Count_Hits[2] + Count_Hits[3] + Count_Hits[4])/(double)Count_InInterests[1]) *100 << "%" <<std::endl;
+      std::cout<< "wholehitrate" << ((double)(node_Count_Hits[1] + node_Count_Hits[2] + node_Count_Hits[3] + node_Count_Hits[4])/(double)node_Count_inInterests[1]) *100 << "%" <<std::endl;//IWP1に来たinterestの数=総interest数
   }
-
+  
+  double randnum = (double)rand()/RAND_MAX;//乱数生成
   if (p[node-1] > randnum){
     m_cs.insert(data);
   }
