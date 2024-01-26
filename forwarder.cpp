@@ -46,7 +46,7 @@ double node_Hitrate[5] = {0};
 bool boolCachehit[5] = {false};
 bool boolinInterest[5] = {false};
 
-// float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
+//float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
 // float p[4] = {0.5, 0.5, 0.5, 0.5};
 float p[4] = {0.0625, 0.125, 0.25, 0.5};
 // float p[4] = {0.015625, 0.03125, 0.125, 0.5};
@@ -360,40 +360,29 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   }
 
   int node = ns3::Simulator::GetContext();
-  
-  if (node_Count_inInterests[1] % 25 == 0 && node == 0){//**パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
-      std::cout<< ">>time" << node_Count_inInterests[1] / 100 <<"s"<<std::endl;//if(countinterst[i] == ****)のとき出力で減らす
-      for (int i = 1; i < 5; i++){
-        node_Hitrate[i] = (double)node_Count_Hits[i] / (double)node_Count_inInterests[i];
-        std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
 
-        // std::cout << boolinInterest[i] << std::endl;
-        // std::cout << boolCachehit[i] << std::endl;
-        // std::cout << "prehitrate: " << prenode_Hitrate[i] * 100 << " hitrate: " << node_Hitrate[i] * 100 << std::endl;
+  if (node_Count_inInterests[node + 1] % 5 == 0){//各IWPにinterestがn個来たタイミングで
 
-        if (boolinInterest[i] == true){//intrestが来てないノードはキャッシュ確率の変動をしない
-          if (boolCachehit[i] == false){//キャッシュヒットしなかった場合
-            p[i-1] = p[i-1] * 1.5;//キャッシュ確率を1.25倍に
-              if (p[i-1] > 0.5){//上限値は0.5
-                p[i-1] = 0.5;
-              }
-          }else{
-            p[i-1] = p[i-1] * 0.5;//キャッシュ確率を0.75倍に
-
-            if (p[i-1] < 0.0625){//下限値は0.0625
-              p[i-1] = 0.0625;//あとで: 定常状態になればここを更に下げる考え方もある(傾向の変化との折り合い)
-            }
-          }
+        if (boolCachehit[node + 1] == false){//IWPにキャッシュヒットがしなかったとき
+          p[node] = p[node] * 1.5;//キャッシュ確率をn倍に増加
+          if (p[node] > 0.5) p[node] = 0.5;//上限値は0.5
+            
+        }else{//キャッシュヒットしたとき
+          p[node] = p[node] * 0.75;//キャッシュ確率をn倍に減少
+          if (p[node] < 0.0625) p[node] = 0.0625;//下限値は0.0625
         }
 
-        boolCachehit[i] = false;
-        boolinInterest[i] = false;
-        // prenode_Count_Hits[i] = node_Count_Hits[i];//ヒット率比較方式で使用
-        // prenode_Hitrate[i] = node_Hitrate[i];//ヒット率比較方式で使用
+        boolCachehit[node + 1] = false;
+  }
 
-        std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
-      }
-      std::cout<< "wholehitrate" << ((double)(node_Count_Hits[1] + node_Count_Hits[2] + node_Count_Hits[3] + node_Count_Hits[4])/(double)node_Count_inInterests[1]) *100 << "%" <<std::endl;//IWP1に来たinterestの数=総interest数
+  if (node_Count_inInterests[1] % 100 == 0 && node == 0){//タイマー: Consumerに100個 = 1秒経過
+    std::cout<< ">>time" << node_Count_inInterests[1] / 100 <<"s"<<std::endl;
+    for (int i = 1; i < 5; i++){//各IWPについての情報
+      // node_Hitrate[i] = (double)node_Count_Hits[i] / (double)node_Count_inInterests[i];
+      // std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
+      std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
+    }
+    std::cout<< "wholehitrate" << ((double)(node_Count_Hits[1] + node_Count_Hits[2] + node_Count_Hits[3] + node_Count_Hits[4])/(double)node_Count_inInterests[1]) *100 << "%" <<std::endl;//少し誤差があるのでこっちは参考程度に
   }
   
   double randnum = (double)rand()/RAND_MAX;//乱数生成
