@@ -44,7 +44,7 @@ double node_Hitrate[5] = {0};
 // int prenode_Count_Hits[5] = {0}; //ヒット率比較方式で使用
 // double prenode_Hitrate[5] = {0};//ヒット率比較方式で使用
 bool boolCachehit[5] = {false};
-
+bool boolinInterest[5] = {false};
 // float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
 // float p[4] = {0.5, 0.5, 0.5, 0.5};
 float p[4] = {0.0625, 0.125, 0.25, 0.5};
@@ -118,9 +118,10 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   int node = ns3::Simulator::GetContext();
   node_Count_inInterests[node] = m_counters.nInInterests;
   // std::cout<< node <<" "<< node_Count_inInterests[node]<<std::endl;
+  boolinInterest[node] = true;
 
-  //フラグ+各更新方式: interestがn個来る間にヒットしたかどうかでキャッシュ確率を変える, 空間手法だけの検証はこのif文をコメントアウトすればオッケー
-  if (node != 0 && node_Count_inInterests[node] % 5 == 0){//各IWPにinterestがn個来たタイミング, node = 0はConsumerなので除く
+  //フラグ+各更新方式: 各IWPにinterestが5個来る間にヒットしたかどうかでキャッシュ確率を変える, 空間手法だけの検証はこのif文をコメントアウトすればオッケー
+  if (node != 0 && node_Count_inInterests[node] % 5 == 0 && boolinInterest[node] == true){//各IWPにinterestがn個来たタイミング, node = 0はConsumerなので除く
 
       if (boolCachehit[node] == false){//IWPにキャッシュヒットがしなかったとき
         p[node - 1] = p[node - 1] * 1.5;//キャッシュ確率をn倍に増加
@@ -132,7 +133,25 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
       }
 
       boolCachehit[node] = false;//キャッシュヒットフラグを戻す
+      boolinInterest[node] = false;
   }
+  
+  /*IWP1にinterestが5個来たときに一斉にキャッシュ確率を更新する, 空間手法だけの検証はこのif文をコメントアウトすればオッケー*/
+  // if (node_Count_inInterests[1] % 5 == 0 && node == 0){//**パケットごとに1秒 node == 0の条件がないと都度そのIWPが呼ばれる
+  //     for (int i = 1; i < 5; i++){
+  //       if (boolinInterest[i] == true){//intrestが来てないノードはキャッシュ確率の変動をしない
+  //         if (boolCachehit[i] == false){
+  //           p[i-1] = p[i-1] * 1.5;
+  //           if (p[i-1] > 0.5) p[i-1] = 0.5;
+  //         }else{
+  //           p[i-1] = p[i-1] * 0.5;
+  //           if (p[i-1] < 0.0625) p[i-1] = 0.0625;
+  //         }
+  //       }
+  //       boolinInterest[i] = false;
+  //       boolCachehit[i] = false;
+  //     }
+  // }
 
   // drop if HopLimit zero, decrement otherwise (if present)
   if (interest.getHopLimit()) {
