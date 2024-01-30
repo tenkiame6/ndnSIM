@@ -44,9 +44,8 @@ double node_Hitrate[5] = {0};
 // int prenode_Count_Hits[5] = {0}; //ヒット率比較方式で使用
 // double prenode_Hitrate[5] = {0};//ヒット率比較方式で使用
 bool boolCachehit[5] = {false};
-bool boolinInterest[5] = {false};
 
-//float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
+// float p[4] = {0.25, 0.25, 0.25, 0.25};//各ノードのキャッシュ確率の初期化
 // float p[4] = {0.5, 0.5, 0.5, 0.5};
 float p[4] = {0.0625, 0.125, 0.25, 0.5};
 // float p[4] = {0.015625, 0.03125, 0.125, 0.5};
@@ -117,8 +116,23 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   
   //各ノードにintrestが来た数を保存
   int node = ns3::Simulator::GetContext();
-  node_Count_inInterests [node] = m_counters.nInInterests;
-  //std::cout<< node <<" "<< node_Count_inInterests[node]<<std::endl;
+  node_Count_inInterests[node] = m_counters.nInInterests;
+  // std::cout<< node <<" "<< node_Count_inInterests[node]<<std::endl;
+
+  //フラグ+各更新方式: interestがn個来る間にヒットしたかどうかでキャッシュ確率を変える, 空間手法だけの検証はこのif文をコメントアウトすればオッケー
+  if (node != 0 && node_Count_inInterests[node] % 5 == 0){//各IWPにinterestがn個来たタイミング, node = 0はConsumerなので除く
+
+      if (boolCachehit[node] == false){//IWPにキャッシュヒットがしなかったとき
+        p[node - 1] = p[node - 1] * 1.5;//キャッシュ確率をn倍に増加
+        if (p[node - 1] > 0.5) p[node - 1] = 0.5;//上限値は0.5
+          
+      }else{//キャッシュヒットしたとき
+        p[node - 1] = p[node - 1] * 0.75;//キャッシュ確率をn倍に減少
+        if (p[node - 1] < 0.0625) p[node - 1] = 0.0625;//下限値は0.0625
+      }
+
+      boolCachehit[node] = false;//キャッシュヒットフラグを戻す
+  }
 
   // drop if HopLimit zero, decrement otherwise (if present)
   if (interest.getHopLimit()) {
@@ -184,7 +198,6 @@ Forwarder::onIncomingInterest(const Interest& interest, const FaceEndpoint& ingr
   else {
     this->onContentStoreMiss(interest, ingress, pitEntry);
   }
-  boolinInterest[node] = true;
 }
 
 void
@@ -279,7 +292,7 @@ Forwarder::onContentStoreHit(const Interest& interest, const FaceEndpoint& ingre
   int node = ns3::Simulator::GetContext();
   node_Count_Hits[node] = m_counters.nCsHits;
   // std::cout<< node <<" "<< node_Count_Hits[node]<<std::endl;
-  boolCachehit[node] = true;
+  boolCachehit[node] = true;//キャッシュヒットフラグをtrueに
 }
 
 pit::OutRecord*
@@ -360,36 +373,21 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   }
 
   int node = ns3::Simulator::GetContext();
-
-  if (node_Count_inInterests[node + 1] % 5 == 0){//各IWPにinterestがn個来たタイミングで
-
-        if (boolCachehit[node + 1] == false){//IWPにキャッシュヒットがしなかったとき
-          p[node] = p[node] * 1.5;//キャッシュ確率をn倍に増加
-          if (p[node] > 0.5) p[node] = 0.5;//上限値は0.5
-            
-        }else{//キャッシュヒットしたとき
-          p[node] = p[node] * 0.75;//キャッシュ確率をn倍に減少
-          if (p[node] < 0.0625) p[node] = 0.0625;//下限値は0.0625
-        }
-
-        boolCachehit[node + 1] = false;
-  }
-
+  //各IWPのキャッシュ確率と全体のヒット率の表示
   if (node_Count_inInterests[1] % 100 == 0 && node == 0){//タイマー: Consumerに100個 = 1秒経過
     std::cout<< ">>time" << node_Count_inInterests[1] / 100 <<"s"<<std::endl;
-    for (int i = 1; i < 5; i++){//各IWPについての情報
+    for (int i = 0; i < 4; i++){//各IWPについての情報
       // node_Hitrate[i] = (double)node_Count_Hits[i] / (double)node_Count_inInterests[i];
       // std::cout<< "node" << i <<" "<< node_Hitrate[i]*100 << "%" <<std::endl;
-      std::cout<< "cache_prob" <<i<< " "<< p[i-1] <<std::endl;
+      std::cout<< "cache_prob" <<i + 1<< " "<< p[i] <<std::endl;
     }
     std::cout<< "wholehitrate" << ((double)(node_Count_Hits[1] + node_Count_Hits[2] + node_Count_Hits[3] + node_Count_Hits[4])/(double)node_Count_inInterests[1]) *100 << "%" <<std::endl;//少し誤差があるのでこっちは参考程度に
   }
-  
+  //Prob(p)の動作部分
   double randnum = (double)rand()/RAND_MAX;//乱数生成
   if (p[node-1] > randnum){
     m_cs.insert(data);
   }
-   
 
   std::set<std::pair<Face*, EndpointId>> satisfiedDownstreams;
   std::multimap<std::pair<Face*, EndpointId>, std::shared_ptr<pit::Entry>> unsatisfiedPitEntries;
